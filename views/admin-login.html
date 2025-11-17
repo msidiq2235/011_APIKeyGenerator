@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login</title>
+    <style>
+        body { font-family: sans-serif; display: grid; place-items: center; min-height: 90vh; background: #f4f7f6; }
+        .form-container { width: 350px; padding: 30px; background: #fff; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+        h2 { text-align: center; margin-top: 0; }
+        div { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; }
+        input { width: 100%; padding: 12px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 6px; }
+        button { width: 100%; padding: 14px; border: none; border-radius: 6px; background: #007bff; color: white; font-size: 16px; cursor: pointer; }
+        pre { background: #f4f4f4; padding: 10px; border-radius: 5px; color: #d9534f; }
+        .register-link { text-align: center; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h2>Admin Login</h2>
+        <div>
+            <label for="loginEmail">Email:</label>
+            <input type="email" id="loginEmail" placeholder="admin@mail.com">
+        </div>
+        <div>
+            <label for="loginPass">Password:</label>
+            <input type="password" id="loginPass" placeholder="password">
+        </div>
+        <button id="btnLogin">Login</button>
+        <pre id="loginResult" style="display:none;"></pre>
+        <div class="register-link">
+            Belum punya akun? <a href="/admin-register-page">Register di sini</a>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('btnLogin').addEventListener('click', async () => {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPass').value;
+            const resEl = document.getElementById('loginResult');
+            
+            try {
+                const res = await fetch('/api/admin/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await res.json();
+
+                if (data.accessToken) {
+                    // SUKSES! Simpan token dan pindah ke dashboard
+                    localStorage.setItem('adminToken', data.accessToken);
+                    window.location.href = '/admin-page'; // Pindah ke halaman admin
+                } else {
+                    // Gagal login
+                    resEl.textContent = data.message || "Login Gagal.";
+                    resEl.style.display = 'block';
+                }
+            } catch (err) {
+                resEl.textContent = err.message;
+                resEl.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
