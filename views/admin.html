@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; max-width: 900px; margin: 20px auto; color: #333; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; max-width: 1000px; margin: 20px auto; color: #333; }
         h2, h3 { color: #1a1a1a; }
         button { padding: 8px 12px; cursor: pointer; border-radius: 5px; border: none; font-weight: 600; }
         .btn-primary { background-color: #007bff; color: white; }
@@ -26,12 +26,16 @@
         .form-group input { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 5px; }
 
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; vertical-align: top; }
         th { background: #f4f4f4; }
+        td.actions { min-width: 290px; text-align: right; } 
         
-        /* === PERUBAHAN DI SINI === */
-        td.actions { min-width: 290px; text-align: right; } /* Dilebarkan untuk 3 tombol */
-        
+        /* Style untuk list key di dalam tabel */
+        td ul { margin: 0; padding-left: 20px; font-size: 0.9em; }
+        td li { margin-bottom: 5px; }
+        td li span.status-active { color: #28a745; font-weight: bold; }
+        td li span.status-inactive { color: #dc3545; }
+
         pre { background: #f1f1f1; padding: 10px; border-radius: 5px; border: 1px solid #ddd; word-wrap: break-word; }
     </style>
 </head>
@@ -80,7 +84,6 @@
             window.location.href = '/admin-login-page';
         }
 
-        // Referensi Form (Tidak Berubah)
         const formTitle = document.getElementById('formTitle');
         const userIdField = document.getElementById('userIdField');
         const emailField = document.getElementById('emailField');
@@ -97,9 +100,7 @@
             if (options.body) {
                 options.headers['Content-Type'] = 'application/json';
             }
-
             const res = await fetch(url, options);
-
             if (res.status === 401 || res.status === 403) {
                 localStorage.removeItem('adminToken');
                 window.location.href = '/admin-login-page';
@@ -125,24 +126,19 @@
                 firstname: firstnameField.value,
                 lastname: lastnameField.value
             };
-
             let url = '/api/admin/users';
             let method = 'POST';
-
             if (userId) {
                 url = `/api/admin/users/${userId}`;
                 method = 'PUT';
             }
-
             try {
                 const res = await fetchProtected(url, {
                     method: method,
                     body: JSON.stringify(userData)
                 });
-                
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.message || 'Gagal menyimpan user');
-                
                 showFormResult(data.message);
                 clearForm();
                 loadUsers(); 
@@ -164,6 +160,7 @@
             }
         }
 
+        // === PERUBAHAN DI FUNGSI INI (renderUserTable) ===
         function renderUserTable(users) {
             const listEl = document.getElementById('usersList');
             if (!users || users.length === 0) {
@@ -171,36 +168,46 @@
                 return;
             }
             
-            let table = '<h3>List Users</h3><table><tr><th>ID</th><th>Email</th><th>First</th><th>Last</th><th class="actions">Actions</th></tr>';
+            // Tambah kolom <th>API Keys</th>
+            let table = '<h3>List Users</h3><table><tr><th>ID</th><th>Email</th><th>Name</th><th>API Keys</th><th class="actions">Actions</th></tr>';
+            
             users.forEach(user => {
-                
-                // === PERUBAHAN DI SINI ===
-                // Menambahkan tombol "Generate Key"
+                // --- Logika untuk generate list API Key ---
+                let apiKeysHtml = '<em>No keys</em>';
+                // Gunakan 'user.apikeys' (lowercase) sesuai perbaikan kita sebelumnya
+                if (user.apikeys && user.apikeys.length > 0) {
+                    apiKeysHtml = user.apikeys.map(k => {
+                        const statusClass = k.outofdate ? 'status-inactive' : 'status-active';
+                        const statusText = k.outofdate ? 'Inactive' : 'Active';
+                        return `<li>${k.key.substring(0, 8)}... <span class="${statusClass}">(${statusText})</span></li>`;
+                    }).join('');
+                    apiKeysHtml = `<ul>${apiKeysHtml}</ul>`;
+                }
+                // --- Akhir logika list key ---
+
                 table += `<tr>
                             <td>${user.id}</td>
                             <td>${user.email}</td>
-                            <td>${user.firstname}</td>
-                            <td>${user.lastname}</td>
-                            <td class="actions">
+                            <td>${user.firstname} ${user.lastname}</td>
+                            <td>${apiKeysHtml}</td> <td class="actions">
                                 <button class="btn-success" onclick="generateKeyForUser(${user.id})">Generate Key</button>
-                                <button class="btn-warning" onclick="editUser(${user.id}, '${user.email}', '${user.firstname}', '${user.lastname}')">Edit</button>
+                                <button class="btn-warning" onclick="editUser(${user.id}, '${user.email}', '${user.firstname || ''}', '${user.lastname || ''}')">Edit</button>
                                 <button class="btn-danger" onclick="deleteUser(${user.id})">Delete</button>
                             </td>
                         </tr>`;
-                // === AKHIR PERUBAHAN ===
-                
             });
             table += '</table>';
             listEl.innerHTML = table;
         }
+        // === AKHIR PERUBAHAN ===
 
         // (UPDATE) (Tidak Berubah)
         function editUser(id, email, firstname, lastname) {
             formTitle.textContent = `Edit User (ID: ${id})`;
             userIdField.value = id;
             emailField.value = email;
-            firstnameField.value = firstname || '';
-            lastnameField.value = lastname || '';
+            firstnameField.value = firstname;
+            lastnameField.value = lastname;
             window.scrollTo(0, 0); 
         }
 
@@ -213,7 +220,6 @@
                 const res = await fetchProtected(`/api/admin/users/${id}`, { method: 'DELETE' });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.message || 'Gagal menghapus user');
-                
                 alert(data.message);
                 loadUsers(); 
                 loadApiKeys(); 
@@ -222,25 +228,22 @@
             }
         }
         
-        // === FUNGSI BARU DI SINI ===
-        // (CREATE API KEY) Fungsi dipanggil tombol "Generate Key"
+        // (CREATE API KEY) (Tidak Berubah)
         async function generateKeyForUser(id) {
             if (!confirm(`Yakin ingin generate key baru untuk user ID ${id}? Key lama (jika ada) akan dinonaktifkan.`)) {
                 return;
             }
             try {
-                // Memanggil API yg sudah kita buat: POST /api/admin/users/:userId/keys
                 const res = await fetchProtected(`/api/admin/users/${id}/keys`, { method: 'POST' });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.message || 'Gagal generate key');
-                
                 alert(`Sukses: Key baru di-generate:\n${data.apiKey.key}`);
-                loadApiKeys(); // OTOMATIS REFRESH LIST KEY
+                loadApiKeys(); 
+                loadUsers(); // Refresh list user juga agar key baru muncul
             } catch (err) {
                 alert(`Error: ${err.message}`);
             }
         }
-        // === AKHIR FUNGSI BARU ===
 
         // (Fungsi Clear Form) (Tidak Berubah)
         document.getElementById('btnClearForm').addEventListener('click', clearForm);
@@ -252,7 +255,9 @@
             lastnameField.value = '';
         }
 
-        // === 4. Logika CRUD ApiKey (Tidak Berubah) ===
+        // === 4. Logika CRUD ApiKey ===
+
+        // (READ) (Tidak Berubah)
         document.getElementById('btnGetApiKeys').addEventListener('click', loadApiKeys);
 
         async function loadApiKeys() {
@@ -265,6 +270,7 @@
             }
         }
 
+        // === PERUBAHAN DI FUNGSI INI (renderApiKeysTable) ===
         function renderApiKeysTable(keys) {
             const listEl = document.getElementById('apiKeysList');
             if (!keys || keys.length === 0) {
@@ -272,10 +278,12 @@
                 return;
             }
             
-            let table = '<h3>List API Keys</h3><table><tr><th>Key</th><th>User Email</th><th>Status</th><th class="actions">Actions</th></tr>';
+            // Tambah kolom <th>Key ID</th>
+            let table = '<h3>List API Keys</h3><table><tr><th>Key ID</th><th>Key</th><th>User Email</th><th>Status</th><th class="actions">Actions</th></tr>';
+            
             keys.forEach(k => {
                 table += `<tr>
-                            <td>${k.key.substring(0, 18)}...</td>
+                            <td>${k.key_id}</td> <td>${k.key.substring(0, 18)}...</td>
                             <td>${k.user_email}</td>
                             <td>${k.status_inactive}</td>
                             <td class="actions">
@@ -290,7 +298,9 @@
             table += '</table>';
             listEl.innerHTML = table;
         }
+        // === AKHIR PERUBAHAN ===
 
+        // (UPDATE Key Status) (Tidak Berubah)
         async function setKeyStatus(keyId, setOutOfDate) {
             const action = setOutOfDate ? 'menonaktifkan' : 'mengaktifkan';
             if (!confirm(`Yakin ingin ${action} key ID ${keyId}?`)) {
@@ -303,14 +313,15 @@
                 });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.message || 'Gagal update key');
-                
                 alert(data.message);
                 loadApiKeys(); 
+                loadUsers(); // Refresh list user juga
             } catch (err) {
                 alert(`Error: ${err.message}`);
             }
         }
 
+        // (DELETE Key) (Tidak Berubah)
         async function deleteApiKey(keyId) {
             if (!confirm(`Yakin ingin menghapus API key ID ${keyId} secara permanen?`)) {
                 return;
@@ -319,9 +330,9 @@
                 const res = await fetchProtected(`/api/admin/apikeys/${keyId}`, { method: 'DELETE' });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.message || 'Gagal menghapus key');
-                
                 alert(data.message);
                 loadApiKeys(); 
+                loadUsers(); // Refresh list user juga
             } catch (err) {
                 alert(`Error: ${err.message}`);
             }
