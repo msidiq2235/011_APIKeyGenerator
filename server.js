@@ -1,33 +1,42 @@
 const express = require("express");
 const cors = require("cors");
-const path = require("path");
+const path = require("path"); // <-- Pastikan ini ada di atas
 require('dotenv').config();
 
-const app = express();
+const app = express(); // <-- INI YANG HILANG. 'app' dibuat di sini
 
-app.use(cors()); // Mengizinkan CORS
-app.use(express.json()); // Middleware untuk parsing JSON
-app.use(express.urlencoded({ extended: true })); // Middleware untuk parsing form data
+// Middleware harus didefinisikan SETELAH 'app' dibuat
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // === Sinkronisasi Database ===
 const db = require("./models");
-// db.sequelize.sync(); // Jalankan ini sekali untuk membuat tabel
-// Gunakan { force: true } untuk testing (akan HAPUS & buat ulang tabel)
+// Pastikan baris sync di-komentar (//) agar tidak me-reset data
 // db.sequelize.sync({ force: true }).then(() => {
 //   console.log('Drop and re-sync db.');
 // });
 
 // === Rute API ===
+// Rute ini menggunakan 'app', jadi harus ada setelah 'app' dibuat
 require('./routes/admin.routes')(app);
 require('./routes/user.routes')(app);
 
 // === Menyajikan Tampilan Web (HTML Sederhana) ===
-// Memberi tahu Express di mana file statis (HTML, CSS, JS) berada
+// Baris ini juga menggunakan 'app' dan 'path'
 app.use(express.static(path.join(__dirname, 'views')));
 
-// Rute untuk menyajikan halaman web
 app.get('/user-page', (req, res) => {
     res.sendFile(path.join(__dirname, 'views', 'user.html'));
+});
+
+// RUTE ADMIN BARU (DIPISAH)
+app.get('/admin-login-page', (req, res) => {
+    res.sendFile(path.join(__dirname, 'views', 'admin-login.html'));
+});
+
+app.get('/admin-register-page', (req, res) => {
+    res.sendFile(path.join(__dirname, 'views', 'admin-register.html'));
 });
 
 app.get('/admin-page', (req, res) => {

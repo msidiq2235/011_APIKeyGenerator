@@ -5,175 +5,338 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard</title>
     <style>
-        body { font-family: sans-serif; max-width: 800px; margin: 20px auto; }
-        .container { display: none; }
-        #loginArea, #registerArea { max-width: 400px; border: 1px solid #ccc; padding: 20px; }
-        div { margin-bottom: 15px; }
-        input, button { width: 100%; padding: 10px; box-sizing: border-box; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; max-width: 900px; margin: 20px auto; color: #333; }
+        h2, h3 { color: #1a1a1a; }
+        button { padding: 8px 12px; cursor: pointer; border-radius: 5px; border: none; font-weight: 600; }
+        .btn-primary { background-color: #007bff; color: white; }
+        .btn-secondary { background-color: #6c757d; color: white; }
+        .btn-danger { background-color: #dc3545; color: white; }
+        .btn-warning { background-color: #ffc107; color: black; }
+        .btn-success { background-color: #28a745; color: white; }
+        
+        #userFormContainer {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            margin-bottom: 20px;
+        }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 600; }
+        .form-group input { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 5px; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
         th { background: #f4f4f4; }
-        pre { background: #f4f4f4; padding: 10px; border-radius: 5px; word-wrap: break-word; }
+        
+        /* === PERUBAHAN DI SINI === */
+        td.actions { min-width: 290px; text-align: right; } /* Dilebarkan untuk 3 tombol */
+        
+        pre { background: #f1f1f1; padding: 10px; border-radius: 5px; border: 1px solid #ddd; word-wrap: break-word; }
     </style>
 </head>
 <body>
-    <h2>Admin Dashboard</h2>
-
-    <div id="loginArea">
-        <h3>Admin Login</h3>
-        <input type="email" id="loginEmail" placeholder="admin@mail.com">
-        <input type="password" id="loginPass" placeholder="password">
-        <button id="btnLogin">Login</button>
-        <pre id="loginResult"></pre>
-    </div>
     
-    <div id="registerArea" style="margin-top: 20px;">
-        <h3>Admin Register (Optional)</h3>
-        <input type="email" id="regEmail" placeholder="new-admin@mail.com">
-        <input type="password" id="regPass" placeholder="password">
-        <button id="btnRegister">Register</button>
-        <pre id="registerResult"></pre>
-    </div>
-    
-    <hr>
+    <div id="adminContent">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h2>Admin Dashboard</h2>
+            <button id="btnLogout" class="btn-danger">Logout</button>
+        </div>
+        <hr>
 
-    <div id="adminContent" class="container">
-        <h3>Welcome, Admin!</h3>
-        <button id="btnLogout" style="background: #f44;">Logout</button>
-        <br><br>
+        <div id="userFormContainer">
+            <h3 id="formTitle">Create New User</h3>
+            <input type="hidden" id="userIdField">
+            <div class="form-group">
+                <label for="emailField">Email</label>
+                <input type="email" id="emailField" placeholder="user@example.com">
+            </div>
+            <div class="form-group">
+                <label for="firstnameField">First Name</label>
+                <input type="text" id="firstnameField" placeholder="John">
+            </div>
+            <div class="form-group">
+                <label for="lastnameField">Last Name</label>
+                <input type="text" id="lastnameField" placeholder="Doe">
+            </div>
+            <button id="btnSaveUser" class="btn-primary">Save User</button>
+            <button id="btnClearForm" class="btn-secondary">Clear Form</button>
+            <pre id="formResult" style="display:none;"></pre>
+        </div>
+
+        <button id="btnGetUsers" class="btn-primary">Refresh List Users</button>
+        <button id="btnGetApiKeys" class="btn-primary">Refresh List API Keys</button>
         
-        <button id="btnGetUsers">Get List Users</button>
-        <div id="usersList"></div>
-
-        <button id="btnGetApiKeys" style="margin-top: 20px;">Get List API Keys</button>
-        <div id="apiKeysList"></div>
+        <div id="usersList" style="margin-top: 20px;"></div>
+        <div id="apiKeysList" style="margin-top: 20px;"></div>
     </div>
 
     <script>
-        const loginArea = document.getElementById('loginArea');
-        const registerArea = document.getElementById('registerArea');
+        // === 1. Inisialisasi & Cek Auth (Tidak Berubah) ===
         const adminContent = document.getElementById('adminContent');
-        
         let authToken = localStorage.getItem('adminToken');
 
-        // Cek jika sudah login
-        if (authToken) {
-            loginArea.style.display = 'none';
-            registerArea.style.display = 'none';
-            adminContent.style.display = 'block';
+        if (!authToken) {
+            window.location.href = '/admin-login-page';
         }
 
-        // --- Register ---
-        document.getElementById('btnRegister').addEventListener('click', async () => {
-            const email = document.getElementById('regEmail').value;
-            const password = document.getElementById('regPass').value;
-            const resEl = document.getElementById('registerResult');
-            
+        // Referensi Form (Tidak Berubah)
+        const formTitle = document.getElementById('formTitle');
+        const userIdField = document.getElementById('userIdField');
+        const emailField = document.getElementById('emailField');
+        const firstnameField = document.getElementById('firstnameField');
+        const lastnameField = document.getElementById('lastnameField');
+        const formResult = document.getElementById('formResult');
+
+        // === 2. Fungsi Utama Fetch (Tidak Berubah) ===
+        async function fetchProtected(url, options = {}) {
+            if (!options.headers) {
+                options.headers = {};
+            }
+            options.headers['Authorization'] = `Bearer ${authToken}`;
+            if (options.body) {
+                options.headers['Content-Type'] = 'application/json';
+            }
+
+            const res = await fetch(url, options);
+
+            if (res.status === 401 || res.status === 403) {
+                localStorage.removeItem('adminToken');
+                window.location.href = '/admin-login-page';
+                return null;
+            }
+            return res;
+        }
+        
+        function showFormResult(message, isError = false) {
+            formResult.textContent = message;
+            formResult.style.color = isError ? '#dc3545' : '#28a745';
+            formResult.style.display = 'block';
+            setTimeout(() => { formResult.style.display = 'none'; }, 3000);
+        }
+
+        // === 3. Logika CRUD User ===
+
+        // (CREATE / UPDATE) (Tidak Berubah)
+        document.getElementById('btnSaveUser').addEventListener('click', async () => {
+            const userId = userIdField.value;
+            const userData = {
+                email: emailField.value,
+                firstname: firstnameField.value,
+                lastname: lastnameField.value
+            };
+
+            let url = '/api/admin/users';
+            let method = 'POST';
+
+            if (userId) {
+                url = `/api/admin/users/${userId}`;
+                method = 'PUT';
+            }
+
             try {
-                const res = await fetch('/api/admin/register', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
+                const res = await fetchProtected(url, {
+                    method: method,
+                    body: JSON.stringify(userData)
                 });
+                
                 const data = await res.json();
-                resEl.textContent = JSON.stringify(data, null, 2);
+                if (!res.ok) throw new Error(data.message || 'Gagal menyimpan user');
+                
+                showFormResult(data.message);
+                clearForm();
+                loadUsers(); 
             } catch (err) {
-                resEl.textContent = err.message;
+                showFormResult(err.message, true);
             }
         });
 
-        // --- Login ---
-        document.getElementById('btnLogin').addEventListener('click', async () => {
-            const email = document.getElementById('loginEmail').value;
-            const password = document.getElementById('loginPass').value;
-            const resEl = document.getElementById('loginResult');
-            
+        // (READ) (Tidak Berubah)
+        document.getElementById('btnGetUsers').addEventListener('click', loadUsers);
+
+        async function loadUsers() {
             try {
-                const res = await fetch('/api/admin/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
-                });
-                const data = await res.json();
-
-                if (data.accessToken) {
-                    localStorage.setItem('adminToken', data.accessToken);
-                    authToken = data.accessToken;
-                    loginArea.style.display = 'none';
-                    registerArea.style.display = 'none';
-                    adminContent.style.display = 'block';
-                    resEl.textContent = 'Login berhasil!';
-                } else {
-                    resEl.textContent = JSON.stringify(data, null, 2);
-                }
+                const res = await fetchProtected('/api/admin/users');
+                const users = await res.json();
+                renderUserTable(users);
             } catch (err) {
-                resEl.textContent = err.message;
+                console.error(err);
             }
-        });
-
-        // --- Logout ---
-        document.getElementById('btnLogout').addEventListener('click', () => {
-            localStorage.removeItem('adminToken');
-            authToken = null;
-            adminContent.style.display = 'none';
-            loginArea.style.display = 'block';
-            registerArea.style.display = 'block';
-            document.getElementById('usersList').innerHTML = '';
-            document.getElementById('apiKeysList').innerHTML = '';
-        });
-
-        // --- Function untuk fetch data terproteksi ---
-        async function fetchProtectedData(url) {
-            if (!authToken) return { error: "No token" };
-            
-            const res = await fetch(url, {
-                headers: { 'Authorization': `Bearer ${authToken}` }
-            });
-            return res.json();
         }
 
-        // --- Get Users ---
-        document.getElementById('btnGetUsers').addEventListener('click', async () => {
-            const data = await fetchProtectedData('/api/admin/users');
+        function renderUserTable(users) {
             const listEl = document.getElementById('usersList');
-            
-            if (data.message) {
-                listEl.innerHTML = `<pre>${data.message}</pre>`;
+            if (!users || users.length === 0) {
+                listEl.innerHTML = '<h4>Tidak ada user.</h4>';
                 return;
             }
             
-            let table = '<h4>List Users</h4><table><tr><th>ID</th><th>Email</th><th>First</th><th>Last</th></tr>';
-            data.forEach(user => {
-                table += `<tr><td>${user.id}</td><td>${user.email}</td><td>${user.firstname}</td><td>${user.lastname}</td></tr>`;
+            let table = '<h3>List Users</h3><table><tr><th>ID</th><th>Email</th><th>First</th><th>Last</th><th class="actions">Actions</th></tr>';
+            users.forEach(user => {
+                
+                // === PERUBAHAN DI SINI ===
+                // Menambahkan tombol "Generate Key"
+                table += `<tr>
+                            <td>${user.id}</td>
+                            <td>${user.email}</td>
+                            <td>${user.firstname}</td>
+                            <td>${user.lastname}</td>
+                            <td class="actions">
+                                <button class="btn-success" onclick="generateKeyForUser(${user.id})">Generate Key</button>
+                                <button class="btn-warning" onclick="editUser(${user.id}, '${user.email}', '${user.firstname}', '${user.lastname}')">Edit</button>
+                                <button class="btn-danger" onclick="deleteUser(${user.id})">Delete</button>
+                            </td>
+                        </tr>`;
+                // === AKHIR PERUBAHAN ===
+                
             });
             table += '</table>';
             listEl.innerHTML = table;
-        });
+        }
 
-        // --- Get API Keys ---
-        document.getElementById('btnGetApiKeys').addEventListener('click', async () => {
-            const data = await fetchProtectedData('/api/admin/apikeys');
-            const listEl = document.getElementById('apiKeysList');
+        // (UPDATE) (Tidak Berubah)
+        function editUser(id, email, firstname, lastname) {
+            formTitle.textContent = `Edit User (ID: ${id})`;
+            userIdField.value = id;
+            emailField.value = email;
+            firstnameField.value = firstname || '';
+            lastnameField.value = lastname || '';
+            window.scrollTo(0, 0); 
+        }
 
-            if (data.message) {
-                listEl.innerHTML = `<pre>${data.message}</pre>`;
+        // (DELETE) (Tidak Berubah)
+        async function deleteUser(id) {
+            if (!confirm(`Yakin ingin menghapus user ID ${id}? Ini akan menghapus semua API key miliknya.`)) {
                 return;
             }
+            try {
+                const res = await fetchProtected(`/api/admin/users/${id}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.message || 'Gagal menghapus user');
+                
+                alert(data.message);
+                loadUsers(); 
+                loadApiKeys(); 
+            } catch (err) {
+                alert(`Error: ${err.message}`);
+            }
+        }
+        
+        // === FUNGSI BARU DI SINI ===
+        // (CREATE API KEY) Fungsi dipanggil tombol "Generate Key"
+        async function generateKeyForUser(id) {
+            if (!confirm(`Yakin ingin generate key baru untuk user ID ${id}? Key lama (jika ada) akan dinonaktifkan.`)) {
+                return;
+            }
+            try {
+                // Memanggil API yg sudah kita buat: POST /api/admin/users/:userId/keys
+                const res = await fetchProtected(`/api/admin/users/${id}/keys`, { method: 'POST' });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.message || 'Gagal generate key');
+                
+                alert(`Sukses: Key baru di-generate:\n${data.apiKey.key}`);
+                loadApiKeys(); // OTOMATIS REFRESH LIST KEY
+            } catch (err) {
+                alert(`Error: ${err.message}`);
+            }
+        }
+        // === AKHIR FUNGSI BARU ===
 
-            // Sesuai permintaan: key, out of date, status inactive, user
-            let table = '<h4>List API Keys</h4><table><tr><th>Key</th><th>Out of Date</th><th>Status</th><th>User Email</th><th>User Name</th></tr>';
-            data.forEach(k => {
+        // (Fungsi Clear Form) (Tidak Berubah)
+        document.getElementById('btnClearForm').addEventListener('click', clearForm);
+        function clearForm() {
+            formTitle.textContent = 'Create New User';
+            userIdField.value = '';
+            emailField.value = '';
+            firstnameField.value = '';
+            lastnameField.value = '';
+        }
+
+        // === 4. Logika CRUD ApiKey (Tidak Berubah) ===
+        document.getElementById('btnGetApiKeys').addEventListener('click', loadApiKeys);
+
+        async function loadApiKeys() {
+            try {
+                const res = await fetchProtected('/api/admin/apikeys');
+                const keys = await res.json();
+                renderApiKeysTable(keys);
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function renderApiKeysTable(keys) {
+            const listEl = document.getElementById('apiKeysList');
+            if (!keys || keys.length === 0) {
+                listEl.innerHTML = '<h4>Tidak ada API key.</h4>';
+                return;
+            }
+            
+            let table = '<h3>List API Keys</h3><table><tr><th>Key</th><th>User Email</th><th>Status</th><th class="actions">Actions</th></tr>';
+            keys.forEach(k => {
                 table += `<tr>
-                            <td>${k.key}</td>
-                            <td>${k.out_of_date}</td>
-                            <td>${k.status_inactive}</td>
+                            <td>${k.key.substring(0, 18)}...</td>
                             <td>${k.user_email}</td>
-                            <td>${k.user_name}</td>
+                            <td>${k.status_inactive}</td>
+                            <td class="actions">
+                                ${k.status_inactive === 'Active' ? 
+                                    `<button class="btn-warning" onclick="setKeyStatus(${k.key_id}, true)">Deactivate</button>` : 
+                                    `<button class="btn-success" onclick="setKeyStatus(${k.key_id}, false)">Activate</button>`
+                                }
+                                <button class="btn-danger" onclick="deleteApiKey(${k.key_id})">Delete</button>
+                            </td>
                         </tr>`;
             });
             table += '</table>';
             listEl.innerHTML = table;
+        }
+
+        async function setKeyStatus(keyId, setOutOfDate) {
+            const action = setOutOfDate ? 'menonaktifkan' : 'mengaktifkan';
+            if (!confirm(`Yakin ingin ${action} key ID ${keyId}?`)) {
+                return;
+            }
+            try {
+                const res = await fetchProtected(`/api/admin/apikeys/${keyId}`, { 
+                    method: 'PUT',
+                    body: JSON.stringify({ outofdate: setOutOfDate })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.message || 'Gagal update key');
+                
+                alert(data.message);
+                loadApiKeys(); 
+            } catch (err) {
+                alert(`Error: ${err.message}`);
+            }
+        }
+
+        async function deleteApiKey(keyId) {
+            if (!confirm(`Yakin ingin menghapus API key ID ${keyId} secara permanen?`)) {
+                return;
+            }
+            try {
+                const res = await fetchProtected(`/api/admin/apikeys/${keyId}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.message || 'Gagal menghapus key');
+                
+                alert(data.message);
+                loadApiKeys(); 
+            } catch (err) {
+                alert(`Error: ${err.message}`);
+            }
+        }
+        
+        // === 5. Logout (Tidak Berubah) ===
+        document.getElementById('btnLogout').addEventListener('click', () => {
+            localStorage.removeItem('adminToken');
+            window.location.href = '/admin-login-page';
         });
+
+        // Muat data saat halaman dibuka
+        loadUsers();
+        loadApiKeys();
+
     </script>
 </body>
 </html>

@@ -1,107 +1,251 @@
-<hr>
-    
-    <h3>Generate API Key</h3>
-    <p>Masukkan ID User (dari hasil 'Save User' di atas). 
-       Setiap kali tombol 'Generate' diklik, key baru akan dibuat dan key lama akan dinonaktifkan.
-    </p>
-    <div>
-        <label>User ID:</label>
-        <input type="number" id="userIdForGen" placeholder="Contoh: 1">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Dashboard</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: grid;
+            place-items: center;
+            min-height: 90vh;
+            background-color: #f4f7f6;
+            color: #333;
+        }
+        .container {
+            width: 100%;
+            max-width: 500px;
+            margin: 20px;
+            padding: 30px;
+            background: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        }
+        h2 {
+            text-align: center;
+            margin-top: 0;
+            color: #1a1a1a;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            box-sizing: border-box; /* Ini penting agar padding tidak merusak layout */
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+        .api-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .api-group input {
+            background-color: #eee;
+        }
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+        .btn-secondary {
+            flex-shrink: 0; /* Mencegah tombol "Generate" mengecil */
+            width: auto;
+            padding: 12px 15px;
+            background-color: #28a745;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #218838;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            font-size: 12px;
+            white-space: pre-wrap; /* Agar teks tidak keluar-kotak */
+            word-wrap: break-word; /* Memaksa teks panjang untuk pindah baris */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>User Settings</h2>
+        
+        <input type="hidden" id="hiddenUserId">
+
+        <div class="form-group">
+            <label for="apiKeyDisplay">API Key</label>
+            <div class="api-group">
+                <input type="text" id="apiKeyDisplay" placeholder="Klik 'Save' untuk memuat / 'Generate' untuk membuat..." readonly>
+                <button class="btn btn-secondary" id="btnGenerate">Generate</button>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="firstname">First Name</label>
+            <input type="text" id="firstname" placeholder="John">
+        </div>
+        
+        <div class="form-group">
+            <label for="lastname">Last Name</label>
+            <input type="text" id="lastname" placeholder="Doe">
+        </div>
+        
+        <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" placeholder="john.doe@example.com">
+        </div>
+
+        <div class="form-group">
+            <button class="btn btn-primary" id="btnSave">Save User</button>
+        </div>
+
+        <pre id="resultArea"></pre>
     </div>
-    <button id="btnGenerate">Generate New Key</button>
-    
-    <h4>Key Baru Anda:</h4>
-    <pre id="generateResult"></pre>
-
-    <hr>
-    
-    <button id="btnGetAllKeys">Get All My Keys</button>
-    <h4>Semua Key Milik User (ID: <span id="currentUserId">...</span>):</h4>
-    <pre id="allKeysResult"></pre>
-
 
     <script>
-        // --- Logic Tombol Save ---
-        document.getElementById('btnSave').addEventListener('click', async () => {
-            const email = document.getElementById('email').value;
-            const firstname = document.getElementById('firstname').value;
-            const lastname = document.getElementById('lastname').value;
-            const resultEl = document.getElementById('saveResult');
+        // --- Referensi Elemen ---
+        const btnSave = document.getElementById('btnSave');
+        const btnGenerate = document.getElementById('btnGenerate');
+        
+        const inputEmail = document.getElementById('email');
+        const inputFirstname = document.getElementById('firstname');
+        const inputLastname = document.getElementById('lastname');
+        
+        const displayApiKey = document.getElementById('apiKeyDisplay');
+        const hiddenUserId = document.getElementById('hiddenUserId');
+        const resultArea = document.getElementById('resultArea');
 
-            try {
-                const response = await fetch('/api/user/save', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, firstname, lastname })
-                });
-                
-                const data = await response.json();
-                resultEl.textContent = JSON.stringify(data, null, 2);
+        // --- Logika Tombol Save ---
+        btnSave.addEventListener('click', async () => {
+            const email = inputEmail.value;
+            const firstname = inputFirstname.value;
+            const lastname = inputLastname.value;
 
-                if (data.user && data.user.id) {
-                    document.getElementById('userIdForGen').value = data.user.id;
-                    document.getElementById('currentUserId').textContent = data.user.id; // Update label
-                }
-
-            } catch (error) {
-                resultEl.textContent = `Error: ${error.message}`;
-            }
-        });
-
-        // --- Logic Tombol Generate ---
-        document.getElementById('btnGenerate').addEventListener('click', async () => {
-            const userId = document.getElementById('userIdForGen').value;
-            const resultEl = document.getElementById('generateResult');
-
-            if (!userId) {
-                resultEl.textContent = "Masukkan User ID terlebih dahulu.";
+            if (!email) {
+                setResult("Error: Email wajib diisi untuk menyimpan.", true);
                 return;
             }
 
             try {
+                // 1. Simpan (create/update) user
+                const saveResponse = await fetch('/api/user/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, firstname, lastname })
+                });
+
+                const data = await saveResponse.json();
+                
+                if (!saveResponse.ok) {
+                    throw new Error(data.message || 'Gagal menyimpan user.');
+                }
+
+                setResult(`Sukses: ${data.message}`);
+                
+                // 2. Simpan User ID untuk dipakai nanti
+                const userId = data.user.id;
+                hiddenUserId.value = userId;
+
+                // 3. Ambil detail user (termasuk semua keys)
+                await loadUserKeys(userId);
+
+            } catch (error) {
+                setResult(`Error: ${error.message}`, true);
+            }
+        });
+
+        // --- Logika Tombol Generate ---
+        btnGenerate.addEventListener('click', async () => {
+            const userId = hiddenUserId.value;
+
+            if (!userId) {
+                setResult("Error: Simpan data user (via email) terlebih dahulu sebelum generate key.", true);
+                return;
+            }
+
+            try {
+                // Panggil endpoint generate-key
                 const response = await fetch(`/api/user/${userId}/generate-key`, {
                     method: 'POST'
                 });
                 
                 const data = await response.json();
-                resultEl.textContent = JSON.stringify(data, null, 2);
 
-                // Otomatis refresh daftar semua key
-                document.getElementById('btnGetAllKeys').click();
+                if (!response.ok) {
+                    throw new Error(data.message || 'Gagal generate key.');
+                }
+                
+                // Tampilkan key baru di display
+                displayApiKey.value = data.apiKey.key;
+                setResult("Sukses: Key baru telah di-generate. Key lama dinonaktifkan.");
 
             } catch (error) {
-                resultEl.textContent = `Error: ${error.message}`;
+                setResult(`Error: ${error.message}`, true);
             }
         });
 
-        // --- Logic Tombol Get All My Keys ---
-        document.getElementById('btnGetAllKeys').addEventListener('click', async () => {
-            const userId = document.getElementById('userIdForGen').value;
-            const resultEl = document.getElementById('allKeysResult');
-            document.getElementById('currentUserId').textContent = userId || "...";
+        // --- Fungsi Bantuan ---
 
-
-            if (!userId) {
-                resultEl.textContent = "Masukkan User ID terlebih dahulu.";
-                return;
-            }
-
+        // Fungsi untuk mengambil data user + keys, dan memuatnya ke form
+        async function loadUserKeys(userId) {
             try {
-                // Kita panggil rute /api/user/:userId yang sudah kita buat
                 const response = await fetch(`/api/user/${userId}`);
-                const data = await response.json();
-                
-                // Data user akan berisi array 'apiKeys'
-                if (data.apiKeys) {
-                    resultEl.textContent = JSON.stringify(data.apiKeys, null, 2);
+                const userData = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(userData.message || 'Gagal memuat detail user.');
+                }
+
+                // Isi form dengan data yang ada
+                inputFirstname.value = userData.firstname || '';
+                inputLastname.value = userData.lastname || '';
+                inputEmail.value = userData.email || '';
+
+                // Cari key yang masih aktif (outofdate == false)
+                const activeKey = userData.apiKeys.find(key => key.outofdate === false);
+
+                if (activeKey) {
+                    displayApiKey.value = activeKey.key;
                 } else {
-                    resultEl.textContent = JSON.stringify(data, null, 2);
+                    displayApiKey.value = "Belum ada key aktif.";
                 }
 
             } catch (error) {
-                resultEl.textContent = `Error: ${error.message}`;
+                 setResult(`Error saat memuat keys: ${error.message}`, true);
             }
-        });
+        }
+
+        // Fungsi untuk menampilkan pesan di area <pre>
+        function setResult(message, isError = false) {
+            resultArea.textContent = message;
+            resultArea.style.color = isError ? '#d9534f' : '#28a745';
+            resultArea.style.borderColor = isError ? '#d9534f' : '#28a745';
+        }
+
     </script>
 </body>
 </html>
